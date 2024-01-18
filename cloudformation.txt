@@ -1,0 +1,1191 @@
+Parameters:
+  KeyName: 
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+# Seoul VPC1
+  VPC1:
+    Type: AWS::EC2::VPC
+    Properties:
+     CidrBlock: 10.1.0.0/16
+     EnableDnsSupport: true
+     EnableDnsHostnames: true
+     Tags:
+      - Key: Name
+        Value: Seoul-VPC1
+
+  VPC1IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-IGW
+
+  VPC1IGWAtt:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VPC1IGW
+      VpcId: !Ref VPC1
+
+  VPC1PubSN1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.1.1.0/24
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pub-SN1
+
+  VPC1PubSN2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.1.2.0/24
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pub-SN2
+
+  VPC1PriSN3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.1.3.0/24
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pri-SN3
+
+  VPC1PriSN4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.1.4.0/24
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pri-SN4
+
+  VPC1PubRT1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pub-RT1
+
+  VPC1PubSN1RT1Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PubRT1
+      SubnetId: !Ref VPC1PubSN1
+
+  VPC1PubSN2RT1Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PubRT1
+      SubnetId: !Ref VPC1PubSN2
+
+  VPC1PubRT1Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC1IGWAtt
+    Properties:
+      RouteTableId: !Ref VPC1PubRT1
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VPC1IGW
+
+  VPC1PriRT3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pri-RT3
+
+  VPC1PriSN3RT3Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PriRT3
+      SubnetId: !Ref VPC1PriSN3
+
+  VPC1PriRT3Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC1NATInstance1
+    Properties:
+      RouteTableId: !Ref VPC1PriRT3
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref VPC1NATInstance1
+
+  VPC1PriRT4:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-Pri-RT4
+
+  VPC1PriSN4RT4Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC1PriRT4
+      SubnetId: !Ref VPC1PriSN4
+
+  VPC1PriRT4Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC1NATInstance2
+    Properties:
+      RouteTableId: !Ref VPC1PriRT4
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref VPC1NATInstance2
+
+  VPC1NAT1SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC1
+      GroupDescription: Seoul-VPC1-NAT1-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC1-NAT1-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: -1
+        CidrIp: 10.1.3.0/24
+
+  VPC1NAT2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC1
+      GroupDescription: Seoul-VPC1-NAT2-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC1-NAT2-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 10.1.1.10/32
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: -1
+        CidrIp: 10.1.4.0/24
+
+  VPC1WEBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC1
+      GroupDescription: Seoul-VPC1-WEB-SG
+      Tags:
+      - Key : Name
+        Value : VPC1-WEB-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 10.1.1.10/32
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+
+  VPC1ALBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC1
+      GroupDescription: Seoul-VPC1-ALB-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC1-ALB-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+
+  VPC1NATInstance1ENI:
+   Type: AWS::EC2::NetworkInterface
+   Properties:
+       SubnetId: !Ref VPC1PubSN1
+       Description: Seoul-VPC1-NAT1 eth0
+       GroupSet:
+       - !Ref VPC1NAT1SG
+       PrivateIpAddress: 10.1.1.10
+       SourceDestCheck: false
+       Tags:
+           - Key: Name
+             Value: Seoul-VPC1-NAT1-ENI
+
+  VPC1NATInstance1:
+   Type: AWS::EC2::Instance
+   Properties:
+     ImageId: ami-084e92d3e117f7692
+     InstanceType: t2.micro
+     KeyName: !Ref KeyName
+     Tags:
+       - Key: Name
+         Value: Seoul-VPC1-NAT1
+     NetworkInterfaces:
+       - NetworkInterfaceId: !Ref VPC1NATInstance1ENI
+         DeviceIndex: 0
+     UserData:
+       Fn::Base64: |
+          #!/bin/bash
+          echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+          echo "net.ipv4.conf.eth0.send_redirects=0" >> /etc/sysctl.conf
+          sysctl -p /etc/sysctl.conf
+          yum -y install iptables-services
+          systemctl start iptables
+          systemctl enable iptables
+          iptables -F
+          iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          service iptables save
+
+  VPC1NATInstance2ENI:
+   Type: AWS::EC2::NetworkInterface
+   Properties:
+       SubnetId: !Ref VPC1PubSN2
+       Description: Seoul-VPC1-NAT2 eth0
+       GroupSet:
+       - !Ref VPC1NAT2SG
+       PrivateIpAddress: 10.1.2.10
+       SourceDestCheck: false
+       Tags:
+           - Key: Name
+             Value: Seoul-VPC1-NAT2-ENI
+
+  VPC1NATInstance2:
+   Type: AWS::EC2::Instance
+   Properties:
+     ImageId: ami-084e92d3e117f7692
+     InstanceType: t2.micro
+     KeyName: !Ref KeyName
+     Tags:
+       - Key: Name
+         Value: Seoul-VPC1-NAT2
+     NetworkInterfaces:
+       - NetworkInterfaceId: !Ref VPC1NATInstance2ENI
+         DeviceIndex: 0
+     UserData:
+       Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+          echo "net.ipv4.conf.eth0.send_redirects=0" >> /etc/sysctl.conf
+          sysctl -p /etc/sysctl.conf
+          yum -y install iptables-services
+          systemctl start iptables
+          systemctl enable iptables
+          iptables -F
+          iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          service iptables save
+
+  VPC1WEBInstance3:
+    Type: AWS::EC2::Instance
+    DependsOn: VPC1PriRT3Route1
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-WEB3
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref VPC1PriSN3
+          GroupSet:
+          - !Ref VPC1WEBSG
+          PrivateIpAddress: 10.1.3.10
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          yum -y install httpd
+          systemctl start httpd 
+          systemctl enable httpd
+          echo "<font size=20 color=red>Seoul WEB Server 1</font>" > /var/www/html/index.html
+          sed -i '56a\
+          LoadModule proxy_connect_module modules/mod_proxy_connect.so\
+          LoadModule proxy_module modules/mod_proxy.so\
+          LoadModule proxy_http_module modules/mod_proxy_http.so' /etc/httpd/conf/httpd.conf
+          cat <<EOL >> /etc/httpd/conf/httpd.conf
+          <VirtualHost *:80>
+              ProxyRequests On
+              ProxyPreserveHOST On
+
+              <Proxy *>
+                  Order deny,allow
+                  Allow from all
+                  SetEnv force-proxy-request-1.0.1
+                  SetEnv proxy-nokeepalive 1
+                  SetEnv proxy-initial-not-pooled 1
+              </Proxy>
+
+              ProxyPass "/servlet/" "http://vpc2.sol501-0711-16.cloud:80/" ttl=60
+              ProxyPassMatch "^/.*\.(jsp|do)$" "http://vpc2.sol501-0711-16.cloud:80/"
+
+              Timeout 120
+          </VirtualHost>
+          EOL
+          systemctl restart httpd
+
+  VPC1WEBInstance4:
+    Type: AWS::EC2::Instance
+    DependsOn: VPC1PriRT4Route1
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-WEB4
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref VPC1PriSN4
+          GroupSet:
+          - !Ref VPC1WEBSG
+          PrivateIpAddress: 10.1.4.10
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          yum -y install httpd
+          systemctl start httpd 
+          systemctl enable httpd
+          echo "<font size=20 color=blue>Seoul WEB Server 2</font>" > /var/www/html/index.html
+          sed -i '56a\
+          LoadModule proxy_connect_module modules/mod_proxy_connect.so\
+          LoadModule proxy_module modules/mod_proxy.so\
+          LoadModule proxy_http_module modules/mod_proxy_http.so' /etc/httpd/conf/httpd.conf
+          cat <<EOL >> /etc/httpd/conf/httpd.conf
+          <VirtualHost *:80>
+              ProxyRequests On
+              ProxyPreserveHOST On
+
+              <Proxy *>
+                  Order deny,allow
+                  Allow from all
+                  SetEnv force-proxy-request-1.0.1
+                  SetEnv proxy-nokeepalive 1
+                  SetEnv proxy-initial-not-pooled 1
+              </Proxy>
+
+              ProxyPass "/servlet/" "http://vpc2.sol501-0711-16.cloud:80/" ttl=60
+              ProxyPassMatch "^/.*\.(jsp|do)$" "http://vpc2.sol501-0711-16.cloud:80/"
+
+              Timeout 120
+          </VirtualHost>
+          EOL
+          systemctl restart httpd
+
+  VPC1ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Name: Seoul-VPC1-ALB
+      SecurityGroups:
+        - !Ref VPC1ALBSG
+      Subnets:
+        - !Ref VPC1PubSN1
+        - !Ref VPC1PubSN2
+
+  VPC1TG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: VPC1WEBInstance4
+    Properties:
+      Name: VPC1TG
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath: '/'
+      HealthCheckIntervalSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref VPC1
+      Targets:
+        - Id: !Ref VPC1WEBInstance3
+          Port: 80
+        - Id: !Ref VPC1WEBInstance4
+          Port: 80
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC1-TG
+
+  VPC1ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref VPC1TG
+      LoadBalancerArn: !Ref VPC1ALB
+      Port: 80
+      Protocol: HTTP
+
+  VPC1LC:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      LaunchConfigurationName: Seoul-VPC1-LC
+      SecurityGroups:
+        - !Ref VPC1WEBSG
+
+  VPC1ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: Seoul-VPC1-ASG
+      VPCZoneIdentifier:
+        - !Ref VPC1PriSN3
+        - !Ref VPC1PriSN4
+      Cooldown: 10
+      LaunchConfigurationName: !Ref VPC1LC
+      MaxSize: 4
+      MinSize: 2
+      DesiredCapacity: 2
+      TargetGroupARNs:
+        - !Ref VPC1TG
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC1-ASG
+          PropagateAtLaunch: true
+
+  ASGPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref  VPC1ASG
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 5
+
+# Seoul VPC2
+  VPC2:
+    Type: AWS::EC2::VPC
+    Properties:
+     CidrBlock: 10.2.0.0/16
+     EnableDnsSupport: true
+     EnableDnsHostnames: true
+     Tags:
+      - Key: Name
+        Value: Seoul-VPC2
+
+  VPC2IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-IGW
+
+  VPC2IGWAtt:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VPC2IGW
+      VpcId: !Ref VPC2
+
+  VPC2PubSN1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC2
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.2.1.0/24
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pub-SN1
+
+  VPC2PubSN2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC2
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.2.2.0/24
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pub-SN2
+
+  VPC2PriSN3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC2
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.2.3.0/24
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pri-SN3
+
+  VPC2PriSN4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC2
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.2.4.0/24
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pri-SN4
+
+  VPC2PubRT1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC2
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pub-RT1
+
+  VPC2PubSN1RT1Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC2PubRT1
+      SubnetId: !Ref VPC2PubSN1
+
+  VPC2PubSN2RT1Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC2PubRT1
+      SubnetId: !Ref VPC2PubSN2
+
+  VPC2PubRT1Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC2IGWAtt
+    Properties:
+      RouteTableId: !Ref VPC2PubRT1
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VPC2IGW
+
+  VPC2PriRT3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC2
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pri-RT3
+
+  VPC2PriSN3RT3Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC2PriRT3
+      SubnetId: !Ref VPC2PriSN3
+
+  VPC2PriRT3Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC2NATInstance1
+    Properties:
+      RouteTableId: !Ref VPC2PriRT3
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref VPC2NATInstance1
+
+  VPC2PriRT4:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC2
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-Pri-RT4
+
+  VPC2PriSN4RT4Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC2PriRT4
+      SubnetId: !Ref VPC2PriSN4
+
+  VPC2PriRT4Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC2NATInstance2
+    Properties:
+      RouteTableId: !Ref VPC2PriRT4
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref VPC2NATInstance2
+
+  VPC2NAT1SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC2
+      GroupDescription: Seoul-VPC2-NAT1-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC2-NAT1-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: -1
+        CidrIp: 10.2.3.0/24
+
+  VPC2NAT2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC2
+      GroupDescription: Seoul-VPC2-NAT2-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC2-NAT2-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 10.1.1.10/32
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: -1
+        CidrIp: 10.2.4.0/24
+
+  VPC2WASSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC2
+      GroupDescription: Seoul-VPC2-WAS-SG
+      Tags:
+      - Key : Name
+        Value : VPC2-WAS-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 10.2.1.10/32
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+
+  VPC2ALBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC2
+      GroupDescription: Seoul-VPC2-ALB-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC2-ALB-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+
+  VPC2NATInstance1ENI:
+   Type: AWS::EC2::NetworkInterface
+   Properties:
+       SubnetId: !Ref VPC2PubSN1
+       Description: Seoul-VPC2-NAT1 eth0
+       GroupSet:
+       - !Ref VPC2NAT1SG
+       PrivateIpAddress: 10.2.1.10
+       SourceDestCheck: false
+       Tags:
+           - Key: Name
+             Value: Seoul-VPC2-NAT1-ENI
+
+  VPC2NATInstance1:
+   Type: AWS::EC2::Instance
+   Properties:
+     ImageId: ami-084e92d3e117f7692
+     InstanceType: t2.micro
+     KeyName: !Ref KeyName
+     Tags:
+       - Key: Name
+         Value: Seoul-VPC2-NAT1
+     NetworkInterfaces:
+       - NetworkInterfaceId: !Ref VPC2NATInstance1ENI
+         DeviceIndex: 0
+     UserData:
+       Fn::Base64: |
+          #!/bin/bash
+          echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+          echo "net.ipv4.conf.eth0.send_redirects=0" >> /etc/sysctl.conf
+          sysctl -p /etc/sysctl.conf
+          yum -y install iptables-services
+          systemctl start iptables
+          systemctl enable iptables
+          iptables -F
+          iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          service iptables save
+
+  VPC2NATInstance2ENI:
+   Type: AWS::EC2::NetworkInterface
+   Properties:
+       SubnetId: !Ref VPC2PubSN2
+       Description: Seoul-VPC2-NAT2 eth0
+       GroupSet:
+       - !Ref VPC2NAT2SG
+       PrivateIpAddress: 10.2.2.10
+       SourceDestCheck: false
+       Tags:
+           - Key: Name
+             Value: Seoul-VPC2-NAT2-ENI
+
+  VPC2NATInstance2:
+   Type: AWS::EC2::Instance
+   Properties:
+     ImageId: ami-084e92d3e117f7692
+     InstanceType: t2.micro
+     KeyName: !Ref KeyName
+     Tags:
+       - Key: Name
+         Value: Seoul-VPC2-NAT2
+     NetworkInterfaces:
+       - NetworkInterfaceId: !Ref VPC2NATInstance2ENI
+         DeviceIndex: 0
+     UserData:
+       Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+          echo "net.ipv4.conf.eth0.send_redirects=0" >> /etc/sysctl.conf
+          sysctl -p /etc/sysctl.conf
+          yum -y install iptables-services
+          systemctl start iptables
+          systemctl enable iptables
+          iptables -F
+          iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          service iptables save
+
+  VPC2WASInstance3:
+    Type: AWS::EC2::Instance
+    DependsOn: VPC2PriRT3Route1
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-WAS3
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref VPC2PriSN3
+          GroupSet:
+          - !Ref VPC2WASSG
+          PrivateIpAddress: 10.2.3.10
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          yum install -y java-1.8.0-openjdk.x86_64
+          wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.80/bin/apache-tomcat-9.0.80.tar.gz
+          tar xzf apache-tomcat-9.0.80.tar.gz
+          ./apache-tomcat-9.0.80/bin/startup.sh
+          touch apache-tomcat-9.0.80/webapps/ROOT/was1.jsp
+          echo '<%@ page contentType="text/html; charset=UTF-8"%>
+                <html>
+                  <head><title>Seoul WAS1 Server</title></head>
+                  <body>
+                        now_time : <%= new java.util.Date()%>
+                  </body>
+                </html>' > /apache-tomcat-9.0.80/webapps/ROOT/was1.jsp
+          sed -i '69s/<Connector port="8080"/<Connector port="80"/gi' apache-tomcat-9.0.80/conf/server.xml
+          ./apache-tomcat-9.0.80/bin/shutdown.sh
+          ./apache-tomcat-9.0.80/bin/startup.sh
+          yum -y install mariadb-server mariadb
+          systemctl start mariadb
+          
+  VPC2WASInstance4:
+    Type: AWS::EC2::Instance
+    DependsOn: VPC2PriRT4Route1
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-WAS4
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref VPC2PriSN4
+          GroupSet:
+          - !Ref VPC2WASSG
+          PrivateIpAddress: 10.2.4.10
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          yum install -y java-1.8.0-openjdk.x86_64
+          wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.80/bin/apache-tomcat-9.0.80.tar.gz
+          tar xzf apache-tomcat-9.0.80.tar.gz
+          ./apache-tomcat-9.0.80/bin/startup.sh
+          touch apache-tomcat-9.0.80/webapps/ROOT/was2.jsp
+          echo '<%@ page contentType="text/html; charset=UTF-8"%>
+                <html>
+                  <head><title>Seoul WAS2 Server</title></head>
+                  <body>
+                        now_time : <%= new java.util.Date()%>
+                  </body>
+                </html>' > /apache-tomcat-9.0.80/webapps/ROOT/was2.jsp
+          sed -i '69s/<Connector port="8080"/<Connector port="80"/gi' apache-tomcat-9.0.80/conf/server.xml
+          ./apache-tomcat-9.0.80/bin/shutdown.sh
+          ./apache-tomcat-9.0.80/bin/startup.sh
+          yum -y install mariadb-server mariadb
+          systemctl start mariadb
+  
+  VPC2ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Name: Seoul-VPC2-ALB
+      SecurityGroups:
+        - !Ref VPC2ALBSG
+      Subnets:
+        - !Ref VPC2PubSN1
+        - !Ref VPC2PubSN2
+
+  VPC2TG:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: VPC2WASInstance4
+    Properties:
+      Name: VPC2TG
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath: '/'
+      HealthCheckIntervalSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref VPC2
+      Targets:
+        - Id: !Ref VPC2WASInstance3
+          Port: 80
+        - Id: !Ref VPC2WASInstance4
+          Port: 80
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC2-TG
+
+  VPC2ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref VPC2TG
+      LoadBalancerArn: !Ref VPC2ALB
+      Port: 80
+      Protocol: HTTP
+
+  VPC2LC:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      LaunchConfigurationName: Seoul-VPC2-LC
+      SecurityGroups:
+        - !Ref VPC2WASSG
+
+  VPC2ASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: Seoul-VPC2-ASG
+      VPCZoneIdentifier:
+        - !Ref VPC2PriSN3
+        - !Ref VPC2PriSN4
+      Cooldown: 10
+      LaunchConfigurationName: !Ref VPC2LC
+      MaxSize: 4
+      MinSize: 2
+      DesiredCapacity: 2
+      TargetGroupARNs:
+        - !Ref VPC2TG
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC2-ASG
+          PropagateAtLaunch: true
+
+  ASGPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref  VPC2ASG
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 5
+
+# Seoul VPC3
+  VPC3:
+    Type: AWS::EC2::VPC
+    Properties:
+     CidrBlock: 10.3.0.0/16
+     EnableDnsSupport: true
+     EnableDnsHostnames: true
+     Tags:
+      - Key: Name
+        Value: Seoul-VPC3
+
+  VPC3IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC3-IGW
+
+  VPC3IGWAtt:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref VPC3IGW
+      VpcId: !Ref VPC3
+
+  VPC3PubSN1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC3
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.3.1.0/24
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC3-Pub-SN1
+
+  VPC3PriSN2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC3
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.3.2.0/24
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC3-Pri-SN3
+
+  VPC3PubRT1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC3
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC3-Pub-RT1
+
+  VPC3PubSN1RT1Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC3PubRT1
+      SubnetId: !Ref VPC3PubSN1
+
+  VPC3PubRT1Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC3IGWAtt
+    Properties:
+      RouteTableId: !Ref VPC3PubRT1
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VPC3IGW
+
+  VPC3PriRT2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC3
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC3-Pri-RT2
+
+  VPC3PriSN2RT2Ass:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VPC3PriRT2
+      SubnetId: !Ref VPC3PriSN2
+
+  VPC3PriRT2Route1:
+    Type: AWS::EC2::Route
+    DependsOn: VPC3NATInstance1
+    Properties:
+      RouteTableId: !Ref VPC3PriRT2
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref VPC3NATInstance1
+
+  VPC3NAT1SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC3
+      GroupDescription: Seoul-VPC3-NAT1-SG
+      Tags:
+      - Key : Name
+        Value : Seoul-VPC3-NAT1-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: -1
+        CidrIp: 10.3.2.0/24
+
+  VPC3DBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC3
+      GroupDescription: Seoul-VPC3-DB-SG
+      Tags:
+      - Key : Name
+        Value : VPC3-DB-SG
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 10.3.1.10/32
+      - IpProtocol: icmp
+        FromPort: -1
+        ToPort: -1
+        CidrIp: 10.0.0.0/8
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+
+  VPC3NATInstance1ENI:
+   Type: AWS::EC2::NetworkInterface
+   Properties:
+       SubnetId: !Ref VPC3PubSN1
+       Description: Seoul-VPC3-NAT1 eth0
+       GroupSet:
+       - !Ref VPC3NAT1SG
+       PrivateIpAddress: 10.3.1.10
+       SourceDestCheck: false
+       Tags:
+           - Key: Name
+             Value: Seoul-VPC3-NAT1-ENI
+
+  VPC3NATInstance1:
+   Type: AWS::EC2::Instance
+   Properties:
+     ImageId: ami-084e92d3e117f7692
+     InstanceType: t2.micro
+     KeyName: !Ref KeyName
+     Tags:
+       - Key: Name
+         Value: Seoul-VPC3-NAT1
+     NetworkInterfaces:
+       - NetworkInterfaceId: !Ref VPC3NATInstance1ENI
+         DeviceIndex: 0
+     UserData:
+       Fn::Base64: |
+          #!/bin/bash
+          echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+          echo "net.ipv4.conf.eth0.send_redirects=0" >> /etc/sysctl.conf
+          sysctl -p /etc/sysctl.conf
+          yum -y install iptables-services
+          systemctl start iptables
+          systemctl enable iptables
+          iptables -F
+          iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+          service iptables save
+          yum install -y openswan
+          cat <<EOF> /etc/sysctl.conf
+          net.ipv4.ip_forward = 1
+          net.ipv4.conf.default.rp_filter = 0
+          net.ipv4.conf.default.accept_source_route = 0
+          net.ipv4.conf.eth0.send_redirects=0
+          EOF
+          sysctl -p /etc/sysctl.conf
+          printf "고객 게이트웨이 IP는> "
+          read leftid
+          printf "터널1의 IP는> "
+          read right
+          printf "로컬 서브넷은> "
+          read local
+          printf "원격 서브넷은> "
+          read remote
+          cat <<EOF> /etc/ipsec.d/aws.conf
+          conn Tunnel1
+            authby=secret
+            auto=start
+            left=%defaultroute
+            leftid="$leftid"
+            right="$right"
+            type=tunnel
+            ikelifetime=8h
+            keylife=1h
+            phase2alg=aes128-sha1;modp1024
+            ike=aes128-sha1;modp1024
+            keyingtries=%forever
+            keyexchange=ike
+            leftsubnet="$local"
+            rightsubnet="$remote"
+            dpddelay=10
+            dpdtimeout=30
+            dpdaction=restart_by_peer
+          EOF
+          cat <<EOF> /etc/ipsec.d/aws.secrets
+          $leftid $right : PSK "password"
+          EOF
+          systemctl start ipsec 
+          systemctl enable ipsec
+
+  VPC3DBInstance2:
+    Type: AWS::EC2::Instance
+    DependsOn: VPC3PriRT2Route1
+    Properties:
+      ImageId: ami-084e92d3e117f7692
+      InstanceType: t2.micro
+      Tags:
+        - Key: Name
+          Value: Seoul-VPC3-DB1
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref VPC3PriSN2
+          GroupSet:
+          - !Ref VPC3DBSG
+          PrivateIpAddress: 10.3.2.10
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          echo "p@ssw0rd" | passwd --stdin root
+          sed -i "s/^PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+          sed -i "s/^#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+          systemctl restart sshd
+          yum -y install mariadb-server mariadb
+          systemctl start mariadb
